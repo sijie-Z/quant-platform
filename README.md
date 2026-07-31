@@ -1,156 +1,215 @@
-# A-Share Multi-Factor Quant Research Platform
+# A-Share Multi-Factor Quantitative Research & Trading Platform
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Research%20OS-v0.1-brightgreen" alt="Research OS">
-  <img src="https://img.shields.io/badge/Milestone-M4-blue" alt="Milestone">
-  <img src="https://img.shields.io/badge/Registry-27%20runs-success">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/API-97%20endpoints-brightgreen" alt="API">
+  <img src="https://img.shields.io/badge/CLI-18%20commands-blueviolet" alt="CLI">
+  <img src="https://img.shields.io/badge/前端-Vue%203%20%2B%20ECharts-orange" alt="Frontend">
+  <img src="https://img.shields.io/badge/实盘-Paper%20%2F%20QMT-yellow" alt="Live Trading">
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
 
-**不是回测框架，是 AI 原生量化研究操作系统。**
+**A 股多因子量化平台：从数据研究到实盘交易的一条完整流水线。**
 
-Trust → Knowledge → Alpha → Production
-
----
-
-## 项目已完成
-
-### M1 — Research OS MVP（v0.1-research-os, 锁定）
-
-3 个诚实因子运行，Trust Metadata 全程记录。
-
-| Factor | IC | ICIR | IC>0% | PIT | Adjust |
-|--------|-----|------|-------|------|--------|
-| volatility_20d | +0.0334 | +0.1181 | 54% | false | hfq |
-| volatility_60d | +0.0349 | +0.1144 | 53% | false | hfq |
-| momentum_12m | +0.0114 | +0.0515 | 54% | false | hfq |
-| reversal | +0.0208 | +0.0979 | 53% | false | hfq |
-
-**能力证明**：
-- ✅ Registry：25+ 条机器可读研究记录（全部 pit=false, DSR=insufficient_trials）
-- ✅ Trust Metadata：数据源、复权方式、偏差警告持久化
-- ✅ Auto Report：WARNING 从 Registry 字段自动生成，非人工编写
-- ✅ Cross-Run Comparison：一句 SQL 回答跨因子知识问题
-- ✅ Path Reuse：新增因子零框架改动
-- ✅ Zero Legacy Modification：4 万行旧代码一个字节未动
-
-### M2 — Factor Diagnostics（完成）
-
-对 Low Vol vs Momentum 做逐年 IC 诊断。
-
-**结论**：Low Vol 好于 Momentum 因为 **年际稳定性**——6 年从未转负，Momentum 波动大且 2026 年转负。
-
-### M3 — Factor Zoo（完成）
-
-10 个因子横向比较。
-
-**核心发现**：**A 股是反转市场。** 所有动量因子（1m/3m/6m）IC 均为负，低波动率因子和反转因子最强。
-
-### M3.5 — Candidate Validation（完成）
-
-volatility_20d 得分 87/100，reversal 65/100。vol_20d 在牛市和熊市均有效。
-
-### M4 — Strategy Validation（进行中）
-
-**目标**：IC 能否变成真实收益？
-
-**M4.1 组合回测（✗ 完成）**：volatility_20d Top20 Long/Bottom20 Short，月调仓，包含佣金 3bp + 印花税 10bp + 滑点 5bp。结果：
-
-| 指标 | 值 |
-|------|-----|
-| CAGR | -18.05% |
-| Sharpe | -0.96 |
-| Max Drawdown | -69.01% |
-| Excess vs CSI300 EW | -30.20% |
-
-**结论**：IC=+0.0334 的信号 **不能直接** 转化为真实组合收益。这正是 Research OS 的价值——不粉饰数据。信号稳定性（年际正）不保证策略可投资性（组合层成本/换手/波动吃掉 alpha）。
+数据 → 因子 → 信号 → 组合 → 回测 → 风控 → 执行 → 实盘 → Web 监控
 
 ---
 
-## 下一步
+## 项目定位
 
-- [ ] **M4.2**：Long-Only variant（Top 10% equal-weight）
-- [ ] **M4.3**：Walk-Forward OOS（2021-2023 train, 2024-2026 test）
-- [ ] **M4.4**：Factor combination（vol_20d + reversal + quality）
-- [ ] **M5**：Production candidate pipeline
+一个覆盖 **研究 → 验证 → 实盘** 全链路的 A 股量化平台：
 
----
+- **研究层**：20+ 因子引擎、IC/ICIR 评估、因子合成、Walk-Forward 验证、组合优化
+- **验证层**：Oracle IC / Known Alpha / MVO Audit 六项系统性验证，No-Lookahead 零前视契约
+- **实盘层**：实时行情、Paper Trading 模拟盘、QMT 实盘接口、实时风控熔断、执行算法
+- **展示层**：FastAPI 97 个 REST 端点 + WebSocket 实时推送 + Vue 3 Bloomberg 风格仪表盘
 
-## 架构
-
-```
-Trust（可信数据层：akshare hfq + CSI300）
-  ↓
-Knowledge（Registry: 27 records, SQL-queryable）
-  ↓
-Research（3 Factor Diagnostics + 10 Factor Zoo + 2 Candidate Validation）
-  ↓
-Strategy Validation（M4 Portfolio Backtest）
-  ↓
-Alpha（未来）
-  ↓
-Production（未来）
-```
-
-```
-Capability Layer (framework/contracts/)  →  开源能力层
-Knowledge Layer (lab/)                   →  私有研究资产
-Production Layer (prod/)                 →  极简生产系统
-```
+> 设计原则：**先验证，后交易；先诚实，后优化。** 所有研究记录都携带 Trust Metadata（数据源、复权方式、PIT 状态、偏差警告），不做粉饰。
 
 ---
 
-## 数据源
+## 功能全景
 
-| 名称 | 类型 | 用途 |
-|------|------|------|
-| AkShare (TX) | 免费 A 股 | v0.1 全部 Run 的数据源 |
-| hfq 后复权 | 复权方式 | 截面排序安全，按 IPO 基准 |
-| CSI300 | 成分股 | 全部 Run 的 universe |
+### 📊 因子研究
+
+| 能力 | 说明 |
+|------|------|
+| 技术因子 | Momentum(1/3/6/12m)、Volatility(20/60d)、Turnover、RSI、MACD、Efficiency Ratio、Breakout、Candle 系列、Trend Stage、MA Convergence 等 20+ |
+| 基本面因子 | log_market_cap、PB、PE、ROE、Asset Growth |
+| 因子处理 | 缩尾(1%/99%) → zscore 标准化 → 行业+市值中性化 |
+| 因子评估 | Rank IC / Pearson IC / ICIR / 分位数收益 / IC 衰减 / 相关性矩阵 |
+| 图网络因子 | 股票关联网络 + 4 种中心性度量（PageRank/特征向量/介数/度） |
+| LLM 因子 | 财经新闻情绪因子（Strategy 模式：关键词 ↔ OpenAI 可插拔） |
+
+### 📈 回测与验证
+
+| 能力 | 说明 |
+|------|------|
+| 向量化回测 | 月频调仓 + 日频持仓漂移，热路径零 for 循环 |
+| A 股成本模型 | 佣金 0.03%（双边）+ 印花税 0.1%（仅卖出）+ 滑点 + 手数约束 |
+| Walk-Forward | 滚动/扩展窗口 OOS 验证，每个 fold 内用 train-only 数据重算信号 |
+| 系统性验证 | Oracle Factor IC=1.0、Known Alpha Recovery、MVO 60/60 成功、Rank IC 手动对比 |
+| 风险建模 | VaR/CVaR、蒙特卡洛模拟、Barra 10 因子风险模型、压力测试 |
+
+### 💹 实盘交易
+
+| 能力 | 说明 |
+|------|------|
+| 实时行情 | AKShare 全市场快照 / 东方财富 WebSocket 推送 / Level 2 盘口 |
+| Paper Trading | 延迟模拟、部分成交、撤单失败、LOB 撮合、A 股规则（T+1/涨跌停/手数） |
+| 实盘接口 | QMT（xtquant）实盘 broker，代码格式自动转换，失败自动回退模拟盘 |
+| 实时风控 | 仓位/行业/日亏损/回撤限额 + 5 级风险等级 + Kill Switch 熔断 |
+| 执行算法 | TWAP / VWAP / Iceberg + SmartRouter 智能路由 + TCA 成本分析 |
+| 运行内核 | EventBus（异步/背压/死信队列）+ StateMachine + 审计日志 + 调度器 |
+
+### 🖥️ Web 平台
+
+- **FastAPI 97 端点**：pipeline / 分析 / 风控 / OMS / 实盘 / 监控 全覆盖
+- **WebSocket 实时推送**：EventBus → WS 桥接，交易事件实时到达前端
+- **Vue 3 + ECharts 仪表盘**：Bloomberg 风格 11 行面板（净值曲线/因子热力图/风险仪表/持仓/归因）
+- **监控**：Prometheus 指标 + Grafana 16 面板模板 + 合规审计导出
 
 ---
 
-## 运行
+## 快速开始
 
 ```bash
-# Setup
+# 1. 环境
 python -m venv .venv
-.venv\Scripts\python -m pip install akshare pandas numpy pyarrow --no-user
+.venv\Scripts\pip install -r requirements.txt
 
-# Run a factor
-.venv\Scripts\python -c "import sys; sys.path.insert(0,'D:/Desktop'); from quant_platform.lab.runs.first_honest_research_run import run; run()"
+# 2. 跑完整流水线（默认合成数据，无需联网）
+.venv\Scripts\python main.py run
 
-# Query Registry
-.venv\Scripts\python -c "import sqlite3, json; c=sqlite3.connect('data/trading.db'); [print(json.loads(r[0]).get('icir')) for r in c.execute(\"SELECT evaluation FROM research_runs WHERE status='success'\")]"
+# 3. 启动 Web 平台（FastAPI + Vue）
+.venv\Scripts\python main.py web
+# 浏览器打开 http://localhost:8000
+
+# 4. 运行所有测试
+.venv\Scripts\python -m pytest tests/ -q
 ```
 
-## Registry 查询
+### CLI 命令（18 个）
 
-```sql
--- 按 ICIR 排名所有因子
-SELECT factor, json_extract(evaluation,'$.ic_mean') as ic, json_extract(evaluation,'$.icir') as icir
-FROM research_runs WHERE status='success'
-ORDER BY CAST(json_extract(evaluation,'$.icir') AS REAL) DESC;
-
--- 跨因子比较（含信任元数据）
-SELECT factor, json_extract(evaluation,'$.icir'), json_extract(universe_meta,'$.pit'), json_extract(data_meta,'$.adjust')
-FROM research_runs;
-
--- 查看失败 Run
-SELECT run_id, status, reason FROM research_runs WHERE status='failed';
+```bash
+python main.py run                 # 完整流水线（数据→因子→信号→回测→报告）
+python main.py analyze             # 分析已有结果
+python main.py compare             # 多策略对比
+python main.py sweep               # 参数网格搜索
+python main.py walkforward         # Walk-Forward OOS 验证
+python main.py ml train/signal     # ML Alpha 信号（XGBoost/LightGBM）
+python main.py trade               # Paper Trading 仿真
+python main.py trade --broker qmt  # QMT 实盘（需 miniQMT）
+python main.py web                 # Web 服务
+python main.py research            # 研究 Agent
+python main.py screen              # 选股筛选
+python main.py execute             # 执行算法
+python main.py factor-store        # 因子健康度
+python main.py gate                # 策略门禁评估
+python main.py strategy            # 多策略管理
+python main.py check-lookahead     # 前视偏差检测
+python main.py config              # 配置管理
+python main.py profile             # 性能分析
 ```
 
 ---
 
-## 治理
+## 目录结构
 
-| 文件 | 内容 |
+```
+quant_platform/
+│
+├── main.py                 # CLI 入口（18 命令）
+├── app.py                  # FastAPI 应用
+│
+├── core/                   # 运行内核：EventBus v2 / Store / StateMachine / Audit / Scheduler
+├── data/                   # 数据层：Synthetic/Tushare/Baostock/AkShare/PostgreSQL/WebSocket/Level2
+│   └── providers/
+├── factors/                # 因子引擎：20+ 技术/基本面因子 + 处理 + 评估 + 图网络
+├── alpha/                  # Alpha 合成：等权/IC/ICIR + ML 信号
+├── portfolio/              # 组合优化：EqualWeight / MVO / RiskParity
+├── backtest/               # 回测：向量化引擎 + 成本模型 + WalkForward + 逐笔回测
+├── risk/                   # 风险：VaR/Barra/蒙特卡洛/熔断/Kill Switch/Regime 检测
+├── execution/              # 执行：OMS / TWAP/VWAP/Iceberg / TCA / 订单簿
+├── trading/                # 实盘：实时行情 / Paper / QMT / LiveEngine / SignalGenerator
+├── strategy/               # 多策略管理
+├── agent/                  # LLM：情绪因子 + RAG 研究 Agent
+├── api/                    # FastAPI 路由（97 端点）
+├── frontend/               # Vue 3 仪表盘（35 组件）
+├── reporting/              # 报告：文本/图表/自包含 HTML
+├── operations/             # 基金运营：NAV / 投资者门户
+├── compliance/             # 合规审计导出
+├── monitoring/             # Grafana 仪表盘模板
+│
+├── framework/              # 能力层契约（Protocols）：Factor/Evaluator/MarketData/Broker
+│   └── contracts/
+├── lab/                    # 研究实验室：诚实因子运行 + Registry + 自动报告
+│   ├── runs/
+│   ├── registry/
+│   └── reports/
+├── tools/                  # 研究工具：common_runner / sanity_check / attribution
+│
+├── docs/                   # 文档：架构 / 里程碑 / 研究报告 / 协议
+├── tests/                  # 单元测试（81 个测试文件，覆盖全部模块）
+├── config/                 # YAML 配置（零硬编码）
+└── requirements.txt        # 精确版本锁定
+```
+
+---
+
+## 研究验证
+
+本平台核心研究链路经过系统性验证（详见 `docs/VALIDATION_REPORT.md`）：
+
+| 验证项 | 方法 | 结果 |
+|--------|------|------|
+| Oracle Factor | 已知未来收益作为因子 → Rank IC | **IC = 1.000000**（计算与数据对齐正确） |
+| Known Alpha Recovery | 生成含已知 Alpha 的数据 → 因子引擎恢复 | **IC 与理论值一致** |
+| Rank IC 对比 | 手动 vs 官方计算 | **差异 < 0.001%** |
+| MVO Audit | 60 次调仓全日志 | **60/60 Success, 0 Fallback** |
+| WalkForward | 多 fold 滚动 OOS | **全部通过（无前视偏差）** |
+| No-Lookahead | 8 条不可协商契约 | **全部实现** |
+
+**诚实研究记录**（`lab/`）：每次因子运行都会在 SQLite Registry 中记录数据源、复权方式、PIT 状态、偏差警告，失败运行同样记录——系统从不隐藏自身的不确定性。
+
+---
+
+## 研究里程碑
+
+| 阶段 | 内容 | 结论 |
+|------|------|------|
+| M1 | Research OS MVP：3 个诚实因子运行 | 平台可信度验证通过 |
+| M2 | Low Vol vs Momentum 逐年 IC 诊断 | Low Vol 胜在年际稳定性 |
+| M3 | 10 因子 Factor Zoo | **A 股是反转市场**，动量因子 IC 全负 |
+| M4 | volatility_20d 组合回测 | IC=+0.0334 不能直接转成组合收益（成本/换手吃掉 alpha） |
+
+**核心发现**：A 股市场存在强均值回归 Alpha（40–80 交易日连续时间结构），但固定频率执行（月频）下因采样混叠系统性失效——信号存在 ≠ 策略可投资。这正是平台"诚实研究"的价值：不粉饰数据。
+
+---
+
+## 已知限制
+
+| 限制 | 说明 |
 |------|------|
-| `CONSTITUTION.md` | 7 条原则 + Flywheel + Anti-Goals |
-| `ARCHITECTURE.md` | 四包 monorepo + 依赖方向 |
-| `ROADMAP.md` | Milestone 线 + 版本准入准则 |
-| `docs/ADR/` | 4 条长期决策记录 |
-| `docs/MILESTONE_1.md` | M1 总结 |
-| `docs/MILESTONE_1_RETROSPECTIVE.md` | M1 复盘（4 个关键问题 + 证伪假设） |
+| 部分数据源需要 API key | Tushare（token）、OpenAI（LLM 因子） |
+| QMT 实盘需环境 | 需券商 miniQMT + xtquant 包 + 实盘账号 |
+| Level 2 数据 | 仅回放/模拟，无真实券商 L2 接入 |
+| 生产存储 | 默认 SQLite；生产环境建议切换 PostgreSQL（docker-compose 已包含） |
+
+---
+
+## 文档索引
+
+| 文档 | 内容 |
+|------|------|
+| `docs/NO_LOOKAHEAD_CONTRACT.md` | 前视偏差零容忍契约（8 条铁规） |
+| `docs/VALIDATION_REPORT.md` | 六项系统性验证报告 |
+| `docs/KERNEL_ARCHITECTURE.md` | 实盘运行内核（控制平面）设计 |
+| `docs/PRODUCTION_PLAYBOOK.md` | 从回测到实盘的完整操作手册 |
+| `docs/PRODUCTION_ARCHITECTURE_V1.md` | 生产架构 v1（80d 反转 + Vol Filter） |
+| `docs/ASHARE_PITFALLS.md` | 10 大 A 股实盘陷阱及处理 |
+| `docs/OPS_RUNBOOK.md` | 运维手册 |
+| `docs/research/` | 系统研究报告（Alpha Discovery / 市场结构 / Regime） |
 
 ---
 
