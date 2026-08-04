@@ -67,7 +67,7 @@ quant_platform/
 1. P0：跑通研究者 use case（已完成离线验证）
 2. P2：本文件落地 + 修掉悬空文档引用
 3. P3：统一 `main.py factor <name>` 入口
-4. P4：`main.py web` 起服务，Paper Trading 跑通
+4. P4：`main.py web` 起服务，Paper Trading 跑通（已验证：`/api/health` 200、前端首页 200、模拟/Paper 双轨跑通）
 5. core 包化：live/lab 改为依赖安装版 core
 6. 全部绿后，再物理拆成 quant-core / quant-lab / quant-live
 
