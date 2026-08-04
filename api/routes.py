@@ -267,13 +267,13 @@ def _execute_pipeline(run_id: str, req: RunRequest):
 
         # Stage 1: Data
         _update_status(run_id, 10, "data")
-        prices, returns, benchmark, metadata, financials = _load_data(
+        prices, returns, benchmark, metadata, financials, turnover = _load_data(
             config, use_tushare=req.use_tushare, use_baostock=req.use_baostock)
 
         # Stage 2: Factors
         _update_status(run_id, 30, "factors")
         processed_factors, ic_results, sector_map, fin_unstacked = _compute_factors(
-            prices, returns, financials, metadata)
+            prices, returns, financials, metadata, turnover, config=config)
 
         # Stage 3: Alpha
         _update_status(run_id, 50, "alpha")
@@ -1119,9 +1119,9 @@ async def compare_strategies(req: CompareRequest):
 def _run_compare(req: CompareRequest) -> CompareResult:
     config = _get_config_with_overrides({"universe.n_stocks": req.n_stocks})
 
-    prices, returns, benchmark, metadata, financials = _load_data(config, use_tushare=False)
+    prices, returns, benchmark, metadata, financials, turnover = _load_data(config, use_tushare=False)
     processed_factors, _ic_results, sector_map, fin_unstacked = _compute_factors(
-        prices, returns, financials, metadata)
+        prices, returns, financials, metadata, turnover)
     signal = _generate_signal(config, processed_factors, returns)
 
     table = []
@@ -1172,9 +1172,9 @@ def _run_sweep(req: SweepRequest) -> SweepResult:
     ):
         try:
             config.universe.n_stocks = n_stocks
-            prices, returns, benchmark, metadata, financials = _load_data(config, use_tushare=False)
+            prices, returns, benchmark, metadata, financials, turnover = _load_data(config, use_tushare=False)
             processed_factors, _ic_results, sector_map, fin_unstacked = _compute_factors(
-                prices, returns, financials, metadata)
+                prices, returns, financials, metadata, turnover)
             signal = _generate_signal(config, processed_factors, returns)
             bt_results = _run_backtest(
                 config, signal, prices, returns, benchmark,
@@ -2612,8 +2612,9 @@ async def ml_train(req: MLTrainRequest):
         from quant_platform.alpha.ml_signal import MLSignalConfig, MLSignalGenerator
         config = load_config()
 
-        data_result = _load_data(config)
-        factors_result = _compute_factors(data_result, config)
+        prices, returns, benchmark, metadata, financials, turnover = _load_data(config)
+        processed_factors, _ic_results, sector_map, fin_unstacked = _compute_factors(
+            prices, returns, financials, metadata, turnover, config=config)
 
         ml_config = MLSignalConfig(
             model_type=req.model_type,
@@ -2622,7 +2623,7 @@ async def ml_train(req: MLTrainRequest):
             retrain_frequency=req.retrain_frequency,
         )
         generator = MLSignalGenerator(config=ml_config)
-        perf = generator.train(factors_result.processed_factors, factors_result.forward_returns)
+        perf = generator.train(processed_factors, returns)
 
         return MLPerformanceResponse(
             model_type=perf.model_type,
@@ -2645,8 +2646,9 @@ async def ml_predict(req: MLTrainRequest):
         from quant_platform.alpha.ml_signal import MLSignalConfig, MLSignalGenerator
         config = load_config()
 
-        data_result = _load_data(config)
-        factors_result = _compute_factors(data_result, config)
+        prices, returns, benchmark, metadata, financials, turnover = _load_data(config)
+        processed_factors, _ic_results, sector_map, fin_unstacked = _compute_factors(
+            prices, returns, financials, metadata, turnover, config=config)
 
         ml_config = MLSignalConfig(
             model_type=req.model_type,
@@ -2655,8 +2657,8 @@ async def ml_predict(req: MLTrainRequest):
         )
         generator = MLSignalGenerator(config=ml_config)
         signal = generator.generate(
-            factors_result.processed_factors,
-            factors_result.forward_returns,
+            processed_factors,
+            returns,
             force_retrain=req.force_retrain,
         )
 
@@ -2681,8 +2683,9 @@ async def ic_monitor_compute(req: ICMonitorRequest):
         from quant_platform.factors.ic_monitor import FactorICMonitor, ICMonitorConfig
         config = load_config()
 
-        data_result = _load_data(config)
-        factors_result = _compute_factors(data_result, config)
+        prices, returns, benchmark, metadata, financials, turnover = _load_data(config)
+        processed_factors, _ic_results, sector_map, fin_unstacked = _compute_factors(
+            prices, returns, financials, metadata, turnover, config=config)
 
         mon_config = ICMonitorConfig(
             rolling_window=req.rolling_window,
@@ -2690,10 +2693,7 @@ async def ic_monitor_compute(req: ICMonitorRequest):
             significance_threshold=req.significance_threshold,
         )
         monitor = FactorICMonitor(config=mon_config)
-        all_stats = monitor.compute_all(
-            factors_result.processed_factors,
-            factors_result.forward_returns,
-        )
+        all_stats = monitor.compute_all(processed_factors, returns)
 
         factor_stats = [
             FactorICStatsResponse(
@@ -2710,10 +2710,7 @@ async def ic_monitor_compute(req: ICMonitorRequest):
         ]
 
         alerts = monitor.get_alerts()
-        weights = monitor.get_adaptive_weights(
-            factors_result.processed_factors,
-            factors_result.forward_returns,
-        )
+        weights = monitor.get_adaptive_weights(processed_factors, returns)
 
         return ICMonitorSummary(factors=factor_stats, alerts=alerts, adaptive_weights=weights)
     except Exception as e:
@@ -2728,11 +2725,12 @@ async def ic_monitor_alerts():
         from quant_platform.factors.ic_monitor import FactorICMonitor
         config = load_config()
 
-        data_result = _load_data(config)
-        factors_result = _compute_factors(data_result, config)
+        prices, returns, benchmark, metadata, financials, turnover = _load_data(config)
+        processed_factors, _ic_results, sector_map, fin_unstacked = _compute_factors(
+            prices, returns, financials, metadata, turnover, config=config)
 
         monitor = FactorICMonitor()
-        monitor.compute_all(factors_result.processed_factors, factors_result.forward_returns)
+        monitor.compute_all(processed_factors, returns)
         return {"alerts": monitor.get_alerts()}
     except Exception as e:
         logger.error("IC monitor alerts failed: %s", e)
@@ -2750,11 +2748,12 @@ async def barra_decompose(req: BarraDecomposeRequest):
         from quant_platform.risk.barra import BarraModel
         config = load_config()
 
-        data_result = _load_data(config)
-        factors_result = _compute_factors(data_result, config)
+        prices, returns, benchmark, metadata, financials, turnover = _load_data(config)
+        processed_factors, _ic_results, sector_map, fin_unstacked = _compute_factors(
+            prices, returns, financials, metadata, turnover, config=config)
 
         # Use equal weight portfolio as default
-        assets = list(data_result.prices.columns)
+        assets = list(prices.columns)
         n = len(assets)
         weights = pd.Series(1.0 / n, index=assets)
 
@@ -2762,10 +2761,10 @@ async def barra_decompose(req: BarraDecomposeRequest):
             half_life=req.half_life,
             shrinkage_target=req.shrinkage_target,
         )
-        model.fit(factors_result.processed_factors, data_result.returns)
+        model.fit(processed_factors, returns)
 
         # Build factor_exposures dict for decompose_risk
-        factor_exposures = factors_result.processed_factors
+        factor_exposures = processed_factors
 
         result = model.decompose_risk(weights, factor_exposures, date=req.date)
 
@@ -2789,14 +2788,15 @@ async def barra_covariance(req: BarraDecomposeRequest):
         from quant_platform.risk.barra import BarraModel
         config = load_config()
 
-        data_result = _load_data(config)
-        factors_result = _compute_factors(data_result, config)
+        prices, returns, benchmark, metadata, financials, turnover = _load_data(config)
+        processed_factors, _ic_results, sector_map, fin_unstacked = _compute_factors(
+            prices, returns, financials, metadata, turnover, config=config)
 
         model = BarraModel(
             half_life=req.half_life,
             shrinkage_target=req.shrinkage_target,
         )
-        model.fit(factors_result.processed_factors, data_result.returns)
+        model.fit(processed_factors, returns)
 
         cov_df = model.get_factor_covariance_df()
         return BarraCovarianceResponse(

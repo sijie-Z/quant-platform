@@ -237,23 +237,37 @@ class DataPipeline:
         df["low_adj"] = df["low"] / df["adj_factor"]
 
         # Handle price limits: stocks at limit ( ±10%) are untradable
-        df["is_limit_up"] = False
-        df["is_limit_down"] = False
+        close = df["close_adj"].unstack("asset")
+        change = close.pct_change(fill_method=None)
+        limit_thresholds = pd.DataFrame(0.10, index=close.index, columns=close.columns)
+        for col in close.columns:
+            code = str(col)
+            if code.startswith(("300", "301", "688", "689")):
+                limit_thresholds[col] = 0.20
+            elif code.startswith(("8", "4")):
+                limit_thresholds[col] = 0.30
+        up = (change >= limit_thresholds - 1e-4) & change.notna()
+        down = (change <= -limit_thresholds + 1e-4) & change.notna()
+        df["is_limit_up"] = up.stack().reindex(df.index).fillna(False).astype(bool)
+        df["is_limit_down"] = down.stack().reindex(df.index).fillna(False).astype(bool)
 
         self.prices = df
 
     def _remove_long_suspensions(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Flag and remove stocks with excessively long trading halts."""
+        """Drop assets with a consecutive suspension run longer than the limit."""
         close = df["close"].unstack("asset")
         suspended = close.isna()
-        # Rolling count of consecutive NaN
-        # Identify runs where all values are NaN for > max_suspension_days
+        drop_assets = []
         for asset in close.columns:
-            suspended[asset].astype(int).groupby(
-                (suspended[asset] != suspended[asset].shift()).cumsum()
-            ).cumsum()
-            # Don't actually remove, just flag for awareness
-            # Removing would require reindexing which we handle in backtest
+            is_nan = close[asset].isna()
+            groups = (is_nan != is_nan.shift()).cumsum()
+            run_lengths = is_nan.astype(int).groupby(groups).transform("sum")
+            if (run_lengths > self.max_suspension_days).any():
+                drop_assets.append(asset)
+        if drop_assets:
+            logger.info("Dropping %d assets with long suspensions: %s",
+                        len(drop_assets), drop_assets[:10])
+            df = df[~df.index.get_level_values("asset").isin(drop_assets)]
         return df
 
     # ------------------------------------------------------------------

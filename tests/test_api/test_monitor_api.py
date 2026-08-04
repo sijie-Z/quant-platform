@@ -70,6 +70,23 @@ class TestRiskOverview:
         data = client.get("/api/monitor/risk-overview").json()
         assert len(data["sector_concentration"]) > 0
 
+    def test_no_synthetic_factor_exposures(self, app, client):
+        import quant_platform.api.monitor as mod
+        from quant_platform.risk.circuit_breaker import RiskMonitor
+
+        risk = RiskMonitor()
+        risk.update_portfolio_state(
+            portfolio_value=1_000_000,
+            daily_pnl=0,
+            positions={"600519": {"value": 100_000, "weight": 0.1, "sector": "白酒"}},
+            sector_weights={"白酒": 0.1},
+        )
+        mod._core_risk = risk
+        store = mod._core_store
+        store.save_position({"code": "600519", "quantity": 100, "avg_cost": 1800, "market_value": 180000})
+        data = client.get("/api/monitor/risk-overview").json()
+        assert data["factor_exposures"] == {}
+
     def test_with_pnl_history(self, app, client):
         import quant_platform.api.monitor as mod
         store = mod._core_store
@@ -119,6 +136,19 @@ class TestTCASummary:
         data = client.get("/api/monitor/tca-summary").json()
         assert data["n_orders"] == 5
 
+    def test_no_synthetic_tca_metrics(self, app, client):
+        import quant_platform.api.monitor as mod
+        store = mod._core_store
+        store.save_trade({
+            "trade_id": "t1", "order_id": "o1", "code": "600000",
+            "side": "buy", "quantity": 100, "price": 10,
+            "executed_at": "2024-07-15T10:00:00",
+        })
+        data = client.get("/api/monitor/tca-summary").json()
+        assert data["daily_trend"] == []
+        assert data["cost_breakdown"] == []
+        assert data["mean_is_bps"] == 0
+
 
 # ── Factor Status ──
 
@@ -157,6 +187,19 @@ class TestFactorStatus:
         # Either 60 dates (with data) or 0 (no signals)
         assert len(data["ic_dates"]) in (0, 60)
 
+    def test_no_synthetic_ic_data(self, client):
+        import quant_platform.api.monitor as mod
+        store = mod._core_store
+        store.save_signal({
+            "signal_id": "s1", "code": "600000", "direction": "buy",
+            "strength": 0.5, "factor_values": {"momentum_3m": 0.1},
+            "generated_at": "2024-07-15T10:00:00",
+        })
+        data = client.get("/api/monitor/factor-status").json()
+        assert data["factors"] == []
+        assert data["rolling_ic"] == {}
+        assert data["attribution"] == []
+
 
 # ── Capacity Gauge ──
 
@@ -190,6 +233,18 @@ class TestCapacityGauge:
         })
         data = client.get("/api/monitor/capacity-gauge").json()
         assert data["current_aum"] == 15_000_000
+
+    def test_no_synthetic_capacity_curve(self, app, client):
+        import quant_platform.api.monitor as mod
+        store = mod._core_store
+        store.save_pnl_snapshot({
+            "total_equity": 15_000_000, "cash": 5_000_000,
+            "market_value": 10_000_000,
+        })
+        data = client.get("/api/monitor/capacity-gauge").json()
+        assert data["aum_curve"] == []
+        assert data["capacity_aum"] == 0
+        assert data["usage_pct"] == 0
 
 
 # ── Config Update ──

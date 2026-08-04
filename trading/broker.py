@@ -913,15 +913,14 @@ class XTPBroker(BrokerInterface):
             return False
 
         try:
-            # Create trader
-            self._trader = self._xtp.QuoteApi(self._client_id, self._data_folder)
+            # Create trader API for orders and quote API for market data
+            self._trader = self._xtp.TraderApi(self._client_id, self._data_folder)
             self._trader.Login(
                 self._server_ip, self._server_port,
                 self._key, self._session_id, self._protocol
             )
 
-            # Create quote API for market data
-            self._quote = self._xtp.TraderApi(self._data_folder)
+            self._quote = self._xtp.QuoteApi(self._data_folder)
             self._quote.SubscribeAllMarketData(
                 [], [], self._session_id  # Empty list = subscribe all
             )

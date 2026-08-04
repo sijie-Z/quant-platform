@@ -307,7 +307,26 @@ class LiveTradingEngine:
         return [c.to_dict() for c in self._cycle_log[-n:]]
 
     def manual_order(self, code: str, side: str, quantity: int, price: float) -> dict:
+        if price <= 0:
+            return {"order_id": "", "status": OrderStatus.REJECTED.value,
+                    "error_msg": "Price must be positive"}
         order = Order(code=code, side=OrderSide(side), quantity=quantity, price=price)
+        order_dict = {"ticker": order.code, "side": order.side.value,
+                      "quantity": order.quantity, "price": order.price}
+        approved, breaches = self._risk.check_pre_trade(order_dict)
+        if not approved:
+            message = "; ".join(b.message for b in breaches)
+            self._audit.log_risk_breach(
+                "pre_trade_block",
+                {"code": order.code, "side": order.side.value,
+                 "breaches": message},
+                severity="warning",
+            )
+            self._bus.publish("risk.order_blocked", {
+                "code": order.code, "breaches": message,
+            }, source="risk")
+            return {"order_id": order.order_id, "status": OrderStatus.REJECTED.value,
+                    "error_msg": f"Risk check failed: {message}"}
         result = self._broker.place_order(order)
         self._trade_count += 1
         self._audit.log_order(result.to_dict(), AuditAction.MANUAL_ORDER, reason="manual")
@@ -316,8 +335,8 @@ class LiveTradingEngine:
     def _run_loop(self):
         while not self._stop_event.is_set():
             try:
-                # Only trade when market is open (or forced)
-                if self._scheduler.is_market_open() or True:  # Always run for paper trading
+                # Paper trading runs continuously; live brokers only trade in market hours
+                if self._scheduler.is_market_open() or isinstance(self._broker, SimulatedBroker):
                     cycle = self._execute_cycle()
                     self._cycle_log.append(cycle)
                     if len(self._cycle_log) > 100:
@@ -337,6 +356,12 @@ class LiveTradingEngine:
             self._sm.transition(PortfolioState.REBALANCING, f"cycle {self._cycle_count}")
 
         cycle = CycleResult(cycle_id=self._cycle_count, timestamp=now)
+
+        if self._risk.kill_switch_active:
+            logger.critical("Kill switch active, skipping cycle %d", self._cycle_count)
+            self._bus.publish("risk.kill_switch", {"active": True}, source="risk")
+            self._audit.log_risk_breach("kill_switch", {"active": True}, severity="critical")
+            return cycle
 
         # Step 1: Fetch prices → publish market.tick events
         self._fetch_prices()

@@ -9,6 +9,35 @@ description = "A-Share Multi-Factor Quantitative Trading Platform"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
+dependencies = [
+    "numpy==1.26.2",
+    "pandas==2.1.3",
+    "scipy==1.16.0",
+    "scikit-learn==1.7.2",
+    "cvxpy==1.7.5",
+    "numba==0.63.1",
+    "tushare==1.4.29",
+    "baostock==0.9.1",
+    "akshare==1.18.59",
+    "tables==3.11.1",
+    "sqlalchemy==2.0.36",
+    "asyncpg==0.30.0",
+    "matplotlib==3.8.4",
+    "seaborn==0.13.2",
+    "fastapi==0.128.0",
+    "uvicorn==0.40.0",
+    "pydantic==2.12.5",
+    "python-multipart==0.0.6",
+    "websocket-client==1.9.0",
+    "httpx==0.28.1",
+    "xgboost==2.1.4",
+    "lightgbm==4.5.0",
+    "shap==0.46.0",
+    "pyyaml==6.0.2",
+    "python-dotenv==1.0.0",
+    "openpyxl==3.1.5",
+    "adata>=1.0.0",
+]
 authors = [
     { name = "Quant Platform Contributors" },
 ]

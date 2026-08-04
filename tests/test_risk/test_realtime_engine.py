@@ -141,6 +141,27 @@ class TestRealTimeRiskEngine:
         assert update.risk_level in (RiskLevel.GREEN, RiskLevel.YELLOW)
         assert update.update_latency_ns >= 0
 
+    def test_buy_does_not_trigger_loss_or_drawdown(self, engine):
+        # A large buy changes exposure, not equity, so it must not look like a loss.
+        update = engine.on_fill({
+            "symbol": "600519",
+            "side": "buy",
+            "price": 100.0,
+            "quantity": 40000,
+        })
+        assert update.risk_level not in (RiskLevel.RED, RiskLevel.KILL)
+        assert not any(b.limit_type in (LimitType.DAILY_LOSS, LimitType.DRAWDOWN)
+                       for b in update.breaches)
+
+    def test_sell_realizes_pnl(self, engine):
+        engine.on_fill({"symbol": "600519", "side": "buy",
+                        "price": 100.0, "quantity": 1000})
+        update = engine.on_fill({"symbol": "600519", "side": "sell",
+                                 "price": 110.0, "quantity": 1000})
+        status = engine.get_risk_status()
+        assert status["daily_pnl"] == pytest.approx(10000.0)
+        assert update.risk_level not in (RiskLevel.RED, RiskLevel.KILL)
+
     def test_pre_trade_check_approved(self, engine):
         check = engine.pre_trade_check(
             symbol="600519",

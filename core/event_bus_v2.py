@@ -204,14 +204,17 @@ class DeadLetterQueue:
         self._total_dropped = 0
 
     def enqueue(self, event: Event, handler_name: str, error: str):
+        retry_count = int(event.headers.get("_retry_count", 0))
         with self._lock:
             self._total_enqueued += 1
             dl = DeadLetter(
                 event=event,
                 handler_name=handler_name,
                 error=error,
-                retry_count=0,
-                next_retry_time=time.time_ns() + self.RETRY_DELAYS_NS[0],
+                retry_count=retry_count,
+                next_retry_time=time.time_ns() + self.RETRY_DELAYS_NS[
+                    min(retry_count, len(self.RETRY_DELAYS_NS) - 1)
+                ],
             )
             self._queue.append(dl)
             if len(self._queue) > self._max_size:
@@ -758,6 +761,7 @@ class AsyncEventBus:
 
                 try:
                     await handler(event)
+                    event.headers.pop("_retry_count", None)
                     latency = time.time_ns() - start
                     stats.record(latency)
                     with self._metrics_lock:
@@ -793,6 +797,7 @@ class AsyncEventBus:
 
                 try:
                     await loop.run_in_executor(None, handler, event)
+                    event.headers.pop("_retry_count", None)
                     latency = time.time_ns() - start
                     stats.record(latency)
                     with self._metrics_lock:
@@ -826,6 +831,7 @@ class AsyncEventBus:
                         if stats.handler_name == dl.handler_name:
                             try:
                                 if not queue.full():
+                                    dl.event.headers["_retry_count"] = str(dl.retry_count + 1)
                                     await queue.put(dl.event)
                                     logger.info("DLQ retry: event %s to '%s' (attempt %d)",
                                               dl.event.event_id, dl.handler_name,

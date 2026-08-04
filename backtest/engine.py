@@ -180,7 +180,7 @@ class BacktestEngine:
             return list(dates)
         elif self.rebalance_frequency == "weekly":
             # Last trading day of each week
-            grouped = dates.to_series().groupby(dates.isocalendar().week)
+            grouped = dates.to_series().groupby([dates.year, dates.isocalendar().week])
             return [pd.Timestamp(d) for d in grouped.last().sort_index().values]
         elif self.rebalance_frequency == "monthly":
             # Last trading day of each month (using actual trading calendar)
@@ -211,29 +211,39 @@ class BacktestEngine:
         capital = self.initial_capital
         current_weights = pd.Series(0.0, index=returns.columns)
         daily_ret_list = []
+        turnover_records = []
 
         rebalance_iter = iter(rebalance_dates)
         next_rdate = next(rebalance_iter, None)
 
         for date in all_dates:
+            rebalance_cost = 0.0
             if next_rdate is not None and date >= next_rdate:
                 target_weights = self.weights_history.get(next_rdate, current_weights)
                 target_weights = target_weights.reindex(returns.columns, fill_value=0.0)
 
-                if current_weights.sum() > 0:
-                    turnover = (target_weights - current_weights).abs().sum() / 2
-                    cost_rate = self.cost_model.compute_costs(turnover)
-                    capital -= cost_rate * capital
+                turnover = (target_weights - current_weights).abs().sum() / 2
+                if turnover > 0:
+                    rebalance_cost = self.cost_model.compute_costs(turnover)
+                turnover_records.append((next_rdate, turnover))
 
                 current_weights = target_weights.copy()
                 next_rdate = next(rebalance_iter, None)
 
             daily_ret_assets = returns.loc[date].reindex(current_weights.index, fill_value=0.0)
             portfolio_return = (current_weights * daily_ret_assets).sum()
-            daily_ret_list.append(portfolio_return)
+            daily_ret = portfolio_return - rebalance_cost
+            daily_ret_list.append(daily_ret)
 
-            capital = capital * (1 + portfolio_return)
+            capital = capital * (1 + daily_ret)
 
         self.daily_returns = pd.Series(daily_ret_list, index=all_dates, name="strategy_return")
         self.portfolio_values = self.initial_capital * (1 + self.daily_returns).cumprod()
         self.portfolio_values.name = "portfolio_value"
+        if turnover_records:
+            dates_idx, values = zip(*turnover_records)
+            self.turnover_history = pd.Series(
+                values, index=pd.DatetimeIndex(dates_idx), name="turnover"
+            )
+        else:
+            self.turnover_history = pd.Series(dtype=float)

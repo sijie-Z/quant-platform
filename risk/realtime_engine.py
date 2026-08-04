@@ -200,6 +200,8 @@ class RealTimeRiskEngine:
         self._peak_equity = 0.0
         self._current_equity = 0.0
         self._initial_equity = 0.0
+        self._realized_pnl = 0.0
+        self._positions: dict[str, dict] = {}
 
         # Order frequency tracking
         self._order_timestamps: deque[int] = deque(maxlen=10000)
@@ -282,9 +284,24 @@ class RealTimeRiskEngine:
                 multiplier = inst.multiplier
         notional = price * quantity * multiplier
         if side == "sell":
-            self._current_equity += notional
+            pos = self._positions.get(symbol)
+            sell_qty = min(quantity, pos["quantity"] if pos else 0)
+            if pos and sell_qty > 0:
+                realized = (price - pos["avg_cost"]) * sell_qty * pos["multiplier"]
+                self._realized_pnl += realized
+                self._current_equity = self._initial_equity + self._realized_pnl
+                pos["quantity"] -= sell_qty
+                if pos["quantity"] <= 0:
+                    self._positions.pop(symbol, None)
         else:
-            self._current_equity -= notional
+            pos = self._positions.setdefault(
+                symbol, {"quantity": 0, "avg_cost": 0.0, "multiplier": multiplier}
+            )
+            total_qty = pos["quantity"] + quantity
+            if total_qty > 0:
+                pos["avg_cost"] = (pos["avg_cost"] * pos["quantity"] + price * quantity) / total_qty
+            pos["quantity"] = total_qty
+            pos["multiplier"] = multiplier
 
         self._peak_equity = max(self._peak_equity, self._current_equity)
 

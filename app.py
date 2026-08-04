@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -19,8 +20,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from quant_platform.api.monitor import router as monitor_router
 from quant_platform.api.routes import router as api_router
@@ -28,6 +32,20 @@ from quant_platform.api.routes import router as api_router
 # Determine frontend dist path
 _FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 _DIST_DIR = _FRONTEND_DIR / "dist"
+
+
+class APITokenMiddleware(BaseHTTPMiddleware):
+    """Require a bearer token for /api routes when QUANT_API_TOKEN is set."""
+
+    async def dispatch(self, request: Request, call_next):
+        token = os.environ.get("QUANT_API_TOKEN", "")
+        path = request.url.path
+        if token and path.startswith("/api") and path != "/api/health":
+            auth = request.headers.get("Authorization", "")
+            api_key = request.headers.get("X-API-Key", "")
+            if api_key != token and auth != f"Bearer {token}":
+                return JSONResponse(status_code=401, content={"detail": "Invalid or missing API token"})
+        return await call_next(request)
 
 
 def create_app(serve_frontend: bool = True) -> FastAPI:
@@ -48,6 +66,7 @@ def create_app(serve_frontend: bool = True) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(APITokenMiddleware)
 
     # API routes
     app.include_router(api_router)
@@ -66,7 +85,7 @@ app = create_app()
 def main():
     parser = argparse.ArgumentParser(description="Quant Platform Web Server")
     parser.add_argument("--port", "-p", type=int, default=8000, help="Server port")
-    parser.add_argument("--host", type=str, default="0.0.0.0", help="Server host")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Server host")
     parser.add_argument("--no-frontend", action="store_true", help="API only, no static files")
 
     args = parser.parse_args()

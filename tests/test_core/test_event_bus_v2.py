@@ -95,6 +95,17 @@ class TestDeadLetterQueue:
         assert stats["pending"] == 1
         assert stats["total_enqueued"] == 1
 
+    def test_retry_count_preserved_from_event_header(self):
+        dlq = DeadLetterQueue()
+        event = Event(topic="test", data={})
+        event.headers["_retry_count"] = "3"
+        dlq.enqueue(event, "handler1", "error")
+        assert dlq._queue[0].retry_count == 3
+        dlq._queue[0].next_retry_time = time.time_ns() - 1000
+        ready = dlq.get_ready_retries()
+        assert len(ready) == 1
+        assert ready[0].retry_count == 3
+
 
 # ── EventStore Tests ──
 

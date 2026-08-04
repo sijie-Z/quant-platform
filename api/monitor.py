@@ -192,23 +192,6 @@ async def get_risk_overview():
         except Exception as e:
             logger.debug("Risk overview partial: %s", e)
 
-    # Try to get Barra factor exposures
-    try:
-        # Use synthetic factor exposure names for Barra 10
-        barra_factors = [
-            "Size", "Value", "Momentum", "Volatility", "Quality",
-            "Growth", "Liquidity", "Leverage", "Beta", "ResidualVol",
-        ]
-        # Generate synthetic exposures if no real data
-        if result.n_positions > 0:
-            rng = np.random.default_rng(42)
-            exposures = rng.normal(0, 0.3, len(barra_factors))
-            result.factor_exposures = {
-                f: round(float(exposures[i]), 3) for i, f in enumerate(barra_factors)
-            }
-    except Exception:
-        pass
-
     return result
 
 
@@ -238,51 +221,6 @@ async def get_tca_summary():
                 daily.setdefault(date, []).append(t)
 
         result.n_orders = len(trades)
-
-        # Generate synthetic TCA metrics from trade data
-        # In production, these would come from TCAEngine analysis
-        daily_trend = []
-        cost_breakdown = []
-        ticker_costs: dict[str, list[float]] = {}
-
-        rng = np.random.default_rng(123)
-        for date in sorted(daily.keys())[-30:]:
-            day_trades = daily[date]
-            len(day_trades)
-            # Simulated IS based on trade count and price variance
-            prices = [t.get("price", 0) for t in day_trades if t.get("price", 0) > 0]
-            if prices:
-                price_var = float(np.std(prices) / np.mean(prices)) if np.mean(prices) > 0 else 0
-                is_bps = price_var * 10000 + abs(rng.normal(5, 3))
-            else:
-                is_bps = abs(rng.normal(8, 4))
-
-            delay = abs(rng.normal(2, 1.5))
-            impact = abs(rng.normal(4, 2))
-            timing = abs(rng.normal(2, 1))
-
-            daily_trend.append({"date": date, "is_bps": round(is_bps, 1)})
-            cost_breakdown.append({
-                "date": date, "delay": round(delay, 1),
-                "impact": round(impact, 1), "timing": round(timing, 1),
-            })
-
-            for t in day_trades:
-                code = t.get("code", "")
-                ticker_costs.setdefault(code, []).append(is_bps)
-
-        result.daily_trend = daily_trend
-        result.cost_breakdown = cost_breakdown
-        result.by_ticker = {k: round(float(np.mean(v)), 1) for k, v in ticker_costs.items()}
-
-        if daily_trend:
-            all_is = [d["is_bps"] for d in daily_trend]
-            result.mean_is_bps = round(float(np.mean(all_is)), 1)
-            result.median_is_bps = round(float(np.median(all_is)), 1)
-            result.mean_delay_bps = round(float(np.mean([d["delay"] for d in cost_breakdown])), 1)
-            result.mean_impact_bps = round(float(np.mean([d["impact"] for d in cost_breakdown])), 1)
-            result.mean_timing_bps = round(float(np.mean([d["timing"] for d in cost_breakdown])), 1)
-            result.mean_arrival_bps = round(result.mean_delay_bps + result.mean_impact_bps, 1)
 
     except Exception as e:
         logger.debug("TCA summary partial: %s", e)
@@ -329,58 +267,6 @@ async def get_factor_status():
                     if isinstance(value, (int, float)):
                         factor_ics.setdefault(factor_name, []).append(float(value))
 
-            # Generate rolling IC and stats per factor
-            rng = np.random.default_rng(456)
-            factors_list = []
-            rolling_ic = {}
-            ic_dates = []
-            attribution = []
-
-            factor_names = list(factor_ics.keys())[:10] if factor_ics else [
-                "momentum_3m", "volatility_20d", "turnover_20d", "rsi_14d",
-                "macd", "pb_ratio", "roe", "market_cap",
-            ]
-
-            # Generate 60 days of synthetic IC data
-            from datetime import timedelta
-            today = datetime.now()
-            ic_dates = [(today - timedelta(days=60 - i)).strftime("%Y-%m-%d") for i in range(60)]
-
-            for fname in factor_names:
-                base_ic = rng.normal(0.03, 0.02)
-                ic_series = list(np.cumsum(rng.normal(0, 0.005, 60)) + base_ic)
-                rolling_ic[fname] = [round(float(v), 4) for v in ic_series]
-
-                current_ic = float(np.mean(ic_series[-20:]))
-                icir = current_ic / max(float(np.std(ic_series[-20:])), 0.001)
-                trend = "up" if ic_series[-1] > ic_series[-20] else "down"
-                alert = "green"
-                if abs(current_ic) < 0.01:
-                    alert = "red"
-                elif abs(current_ic) < 0.02:
-                    alert = "yellow"
-
-                factors_list.append({
-                    "name": fname,
-                    "current_ic": round(current_ic, 4),
-                    "icir": round(icir, 3),
-                    "trend": trend,
-                    "alert": alert,
-                    "weight": round(float(rng.uniform(0.05, 0.25)), 3),
-                })
-
-                attribution.append({
-                    "factor": fname,
-                    "contribution_bps": round(float(rng.normal(5, 15)), 1),
-                })
-
-            result.factors = factors_list
-            result.rolling_ic = rolling_ic
-            result.ic_dates = ic_dates
-            result.attribution = attribution
-            result.decay_alerts = [f for f in factors_list if f["alert"] in ("red", "yellow")]
-            result.disabled_factors = [f["name"] for f in factors_list if f["alert"] == "red"]
-
     except Exception as e:
         logger.debug("Factor status partial: %s", e)
 
@@ -409,37 +295,6 @@ async def get_capacity_gauge():
             result.current_aum = latest.get("total_equity", 0)
         elif positions:
             result.current_aum = sum(p.get("market_value", 0) for p in positions)
-
-        # Simulated capacity curve
-        # In production, this would use CapacityEstimator with real data
-        rng = np.random.default_rng(789)
-        base_aum = max(result.current_aum, 10_000_000)
-        aum_range = [base_aum * m for m in [0.5, 1, 2, 5, 10, 20, 50, 100]]
-
-        aum_curve = []
-        for aum in aum_range:
-            # Sharpe decays with AUM due to market impact
-            decay = max(0, 1.0 - (aum / (base_aum * 50)) ** 0.5)
-            sharpe = 1.5 * decay + rng.normal(0, 0.05)
-            ann_ret = sharpe * 0.15  # ~15% vol assumption
-            aum_curve.append({
-                "aum": round(aum, 0),
-                "sharpe": round(max(sharpe, 0), 3),
-                "return": round(ann_ret, 4),
-            })
-
-        result.aum_curve = aum_curve
-        # Capacity is where Sharpe drops below 0.5
-        capacity_point = next((p for p in aum_curve if p["sharpe"] < 0.5), aum_curve[-1])
-        result.capacity_aum = capacity_point["aum"]
-        result.usage_pct = round(result.current_aum / max(result.capacity_aum, 1) * 100, 1)
-        result.sharpe_at_capacity = capacity_point["sharpe"]
-
-        # Participation rate estimate
-        if positions and pnl:
-            total_mv = sum(p.get("market_value", 0) for p in positions)
-            avg_daily_volume = total_mv * 0.05  # Assume 5% of market value as daily volume
-            result.participation_rate = round(min(total_mv / max(avg_daily_volume, 1), 0.10), 4)
 
     except Exception as e:
         logger.debug("Capacity gauge partial: %s", e)

@@ -280,7 +280,13 @@ class Store:
     def delete_position(self, code: str, tenant_id: str = ""):
         """Remove a position."""
         with self._lock, self._conn() as conn:
-            conn.execute("DELETE FROM positions WHERE code = ?", (code,))
+            if tenant_id:
+                conn.execute(
+                    "DELETE FROM positions WHERE code = ? AND tenant_id = ?",
+                    (code, tenant_id),
+                )
+            else:
+                conn.execute("DELETE FROM positions WHERE code = ?", (code,))
 
     def get_positions(self, tenant_id: str = "") -> list[dict]:
         """Get all current positions."""
