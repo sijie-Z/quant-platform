@@ -91,7 +91,7 @@ class RegimeBasedTimer:
     """Adjust factor weights based on detected market regime.
 
     Usage:
-        from quant_platform.risk.regime import CompositeRegimeDetector
+        from quant_platform.shared.regime import CompositeRegimeDetector
         from quant_platform.factors.factor_timing import RegimeBasedTimer
 
         detector = CompositeRegimeDetector()

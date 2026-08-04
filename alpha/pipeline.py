@@ -95,7 +95,7 @@ class AlphaPipeline:
                     "Tradability gate enabled but prices not provided — skipping"
                 )
             else:
-                from quant_platform.risk.profile_classifier import (
+                from quant_platform.shared.profile_classifier import (
                     apply_tradability_gate,
                 )
                 signal = apply_tradability_gate(
