@@ -1,7 +1,7 @@
 """UniverseProvider — stock universe contract with explicit honesty metadata.
 
 This is the keystone of Trust First under real-world data friction (see
-CONSTITUTION.md Principle 1 and the Builder-mode trust discipline).
+docs/ARCHITECTURE_V2.md Principle 1 and the Builder-mode trust discipline).
 
 The contract does NOT promise a perfect point-in-time universe. Instead it
 MANDATES that every implementation declares, in machine-readable form, exactly

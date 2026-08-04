@@ -1,6 +1,6 @@
 """lab package — Knowledge Layer for quant_platform.
 
-Per CONSTITUTION.md: experiments, factors-as-content, reports, and the
+Per docs/ARCHITECTURE_V2.md: experiments, factors-as-content, reports, and the
 research-run machinery live here. This is where Knowledge compounds
 (Principle 3). Alpha (research output) lives here as an artifact, NOT as a
 system layer — Production (prod/) consumes Alpha but does not own it.

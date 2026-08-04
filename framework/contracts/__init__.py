@@ -1,6 +1,6 @@
 """Capability-layer Protocols (stable interfaces).
 
-Per ADR-0004 (Protocol Before Plugin), interfaces are locked before
+Per docs/ARCHITECTURE_V2.md ADR-0004 (Protocol Before Plugin), interfaces are locked before
 implementations. Each Protocol here has at least one Reference Implementation
 (`ref/`); new providers MUST implement the existing Protocol rather than
 spawning a parallel interface.

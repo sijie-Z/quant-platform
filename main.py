@@ -1152,6 +1152,35 @@ def cmd_trade(args) -> int:
     return 0
 
 
+def cmd_factor(args) -> int:
+    """Unified research entry: run any factor offline or through the real runner."""
+    if args.factor == "list":
+        try:
+            from quant_platform.lab.runs.synthetic_factor_run import available_factors
+            for name in available_factors():
+                print(name)
+        except Exception as e:
+            logger.error("Failed to list factors: %s", e)
+            return 1
+        return 0
+
+    try:
+        if args.synthetic:
+            from quant_platform.lab.runs.synthetic_factor_run import run_synthetic_factor
+            run_synthetic_factor(
+                args.factor,
+                n_stocks=getattr(args, "n_stocks", 5),
+                n_days=getattr(args, "n_days", 500),
+            )
+        else:
+            from run_factor import run_factor_report
+            run_factor_report(args.factor)
+    except Exception as e:
+        logger.error("Factor run failed: %s", e)
+        return 1
+    return 0
+
+
 def cmd_factor_store(args) -> int:
     """Factor Research Store operations."""
     from quant_platform.factors.store import FactorResearchStore, FactorDefinition
@@ -1698,6 +1727,16 @@ def main() -> int:
     research_validate.add_argument("--timeout", type=int, default=600,
                                     help="Timeout in seconds")
 
+    # factor (unified research entry)
+    factor_parser = subparsers.add_parser("factor", help="Run a factor research report")
+    factor_parser.add_argument("factor", nargs="?", default="list", help="Factor name or 'list'")
+    factor_parser.add_argument("--synthetic", action="store_true",
+                               help="Run offline with synthetic data")
+    factor_parser.add_argument("--n-stocks", type=int, default=5,
+                               help="Synthetic universe size")
+    factor_parser.add_argument("--n-days", type=int, default=500,
+                               help="Synthetic history length")
+
     # factor-store
     fs_parser = subparsers.add_parser("factor-store", help="Factor Research Store operations")
     fs_sub = fs_parser.add_subparsers(dest="subcommand", help="Factor Store action")
@@ -1841,6 +1880,8 @@ def main() -> int:
         return cmd_research(args)
     elif args.command == "walkforward":
         return cmd_walkforward(args)
+    elif args.command == "factor":
+        return cmd_factor(args)
     elif args.command == "factor-store":
         return cmd_factor_store(args)
     elif args.command == "screen":

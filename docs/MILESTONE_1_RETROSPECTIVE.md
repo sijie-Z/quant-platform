@@ -9,7 +9,7 @@
 1. **JSON trust metadata 在 Registry 中足够应对 3 次运行** — 每个跨 Factor 的问题（哪个 ICIR 最高？谁用 hfq？pit 状态？）都用单条 SQL 回答，无需打开任何 Run 脚本。
 2. **报告生成器逐字读取 Registry 的 trust 字段** — WARNING 由 `pit=false` + `adjust=none` 自动生成，零硬编码。去重后重新生成报告能完全验证这一点。
 3. **"单个 Run，不抽 Runner"的纪律成立** — 3 个 Factor = 3 个脚本，没有共享抽象。加第四个 Factor 只需新增 1 个文件，和第三个完全一样。
-4. **framework/contracts 维持在 6 个 Protocol** — M1 执行路径不需要新增任何一个。Broker/LLM 仍然是 stub 且没有消费者，这反而印证了 ADR-0004 "Protocol before Plugin，不是 Protocol before Consumer"。
+4. **framework/contracts 维持在 6 个 Protocol** — M1 执行路径不需要新增任何一个。Broker/LLM 仍然是 stub 且没有消费者，这反而印证了 docs/ARCHITECTURE_V2.md 中的 ADR-0004 "Protocol before Plugin，不是 Protocol before Consumer"。
 5. **零存量代码修改** — trust layer 是和现有系统共存建出来的，没有替换 4 万行旧回测。
 
 ## 被证伪的假设

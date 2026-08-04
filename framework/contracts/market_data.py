@@ -1,6 +1,6 @@
 """MarketDataProvider — daily market data contract with explicit adjust + honesty.
 
-Per CONSTITUTION.md Principle 1 (Truth First), the contract refuses to return
+Per docs/ARCHITECTURE_V2.md Principle 1 (Truth First), the contract refuses to return
 "prices" without declaring how adjusted they are. A non-adjusted provider is
 allowed, but MUST surface its adjustment state via `data_meta()` so the
 Registry can flag the run and the Report can warn — same discipline as

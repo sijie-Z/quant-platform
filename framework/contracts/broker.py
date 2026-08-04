@@ -1,6 +1,6 @@
 """Broker — execution contract. Stable interface over QMT / Paper / future IB.
 
-Per ADR-0003 (Single Live Runner), there is one OMS / one risk engine / one
+Per docs/ARCHITECTURE_V2.md ADR-0003 (Single Live Runner), there is one OMS / one risk engine / one
 live path in the Production layer. Broker implementations live in the
 Capability layer as drivers; the Production layer consumes exactly one.
 

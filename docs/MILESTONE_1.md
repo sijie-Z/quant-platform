@@ -29,7 +29,7 @@ Three Honest Research Runs, each following the same Trust → Factor → IC/ICIR
 | Single-run reports | `data/reports/run_*.md` (3 files) |
 | Cross-run comparison | `data/reports/factor_comparison.md` |
 | Factor diagnostic | `data/reports/diagnostic_volatility_60d.md` |
-| Governance | `CONSTITUTION.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `SUCCESS_METRICS.md`, `docs/ADR/0001..0004` |
+| Governance | `docs/ARCHITECTURE_V2.md` (principles + ADR summary) |
 
 ## What "honest" means here
 
