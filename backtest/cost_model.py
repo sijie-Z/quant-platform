@@ -153,7 +153,7 @@ class CostModel:
     def _init_impact_calculator(self):
         """Lazy-init the market impact calculator."""
         try:
-            from quant_platform.shared.market_impact import (
+            from quant_core.market_impact import (
                 CompositeImpactModel,
                 ExecutionCostCalculator,
             )

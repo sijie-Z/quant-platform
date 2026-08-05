@@ -1,3 +1,3 @@
-"""Compatibility shim: moved to quant_platform.shared.market_impact."""
+"""Compatibility shim: moved to quant_core.market_impact."""
 
-from quant_platform.shared.market_impact import *  # noqa: F401,F403
+from quant_core.market_impact import *  # noqa: F401,F403

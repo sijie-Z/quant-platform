@@ -22,7 +22,10 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-CORE_DIRS = {"factors", "alpha", "portfolio", "backtest", "data", "framework", "research", "utils"}
+CORE_DIRS = {
+    "factors", "alpha", "portfolio", "backtest", "data", "framework",
+    "research", "utils", "shared",
+}
 LIVE_DIRS = {
     "core", "trading", "execution", "api", "risk", "strategy",
     "operations", "compliance", "monitoring", "daemon", "kernel",
@@ -77,6 +80,9 @@ def _violations() -> list[str]:
             continue
         for imp in _imports(py_file):
             target = None
+            if imp == "quant_core" or imp.startswith("quant_core."):
+                target = "core"
+                continue
             for layer_name, dirs in (
                 ("core", CORE_DIRS),
                 ("live", LIVE_DIRS),

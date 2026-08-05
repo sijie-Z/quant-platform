@@ -194,7 +194,7 @@ class PostgresStore:
 
     def _init_fallback(self):
         """Initialize SQLite fallback."""
-        from quant_platform.shared.store import Store
+        from quant_core.store import Store
         self._fallback_store = Store()
         self._backend = "sqlite"
 

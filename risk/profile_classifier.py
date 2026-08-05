@@ -1,3 +1,3 @@
-"""Compatibility shim: moved to quant_platform.shared.profile_classifier."""
+"""Compatibility shim: moved to quant_core.profile_classifier."""
 
-from quant_platform.shared.profile_classifier import *  # noqa: F401,F403
+from quant_core.profile_classifier import *  # noqa: F401,F403

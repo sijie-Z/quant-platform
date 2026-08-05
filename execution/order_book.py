@@ -1,3 +1,3 @@
-"""Compatibility shim: moved to quant_platform.shared.order_book."""
+"""Compatibility shim: moved to quant_core.order_book."""
 
-from quant_platform.shared.order_book import *  # noqa: F401,F403
+from quant_core.order_book import *  # noqa: F401,F403

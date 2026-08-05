@@ -35,12 +35,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from quant_platform.shared.market_impact import (
+from quant_core.market_impact import (
     CompositeImpactModel,
     ExecutionCostCalculator,
     MarketImpact,
 )
-from quant_platform.shared.order_book import (
+from quant_core.order_book import (
     BookOrder,
     BookOrderStatus,
     OrderBook,
